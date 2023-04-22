@@ -1,5 +1,5 @@
+import plotly.express as px
 import streamlit as st
-import plotly as px
 import pandas as pd
 
 from collections import Counter
@@ -48,10 +48,58 @@ def show_images(images):
             st.markdown(f"[Links]({url})")
 
 def image_page():
-    show_images(all_images)
+    options = sorted_tag_strings[:20]
+    for item in most_common_combs:
+        options.append(f"{item[0][0]}, {item[0][1]} ({item[1]})")
 
-def stats_page():
-    pass
+    tag = st.selectbox("Select Tag", options)
+
+    idx = tag.find("(")
+    tag = tag[:idx-1]
+    if "," in tag:
+        tag1, tag2 = tag.split(",")
+        tag1, tag2 = tag1.strip(), tag2.strip()
+
+        images_with_tags = [img for img in all_images if tag1 in img["tags"] and tag2 in img["tags"]]
+    else:
+        images_with_tags = [img for img in all_images if tag in img["tags"]]       
+
+    show_images(images_with_tags)
+
+def stats_page(min_tags_number=0):
+    filtered_tags = {
+        k: v
+        for k, v in sorted(tag_counter.items(), key=lambda x: -x[1])
+        if v >= min_tags_number
+    }
+    labels = list(filtered_tags.keys())
+    counts = list(filtered_tags.values())
+
+    if min_tags_number > 0: 
+        st.markdown(f"#### Top {min_tags_number} Tags") 
+    else: 
+        st.markdown(f"#### All Tags")
+
+    df = pd.DataFrame(list(zip(labels, counts)), columns=["Tags", "Counts"])
+    fig = px.pie(df, values="Counts", names="Tags")
+    fig.update_traces(textinfo="label+percent")
+    fig.update_layout(width=700, height=700)
+    st.plotly_chart(fig)
+
+    st.markdown(f"#### Top 5 Tags") 
+    df = pd.DataFrame(list(zip(labels[:5], counts[:5])), columns=["Tags", "Counts"])
+    fig = px.bar(df, x="Tags", y="Counts")
+    fig.update_layout(width=800, height=500)
+    st.plotly_chart(fig)
+
+    st.markdown(f"#### Most common combinations") 
+
+    labels = [str(x[0]) for x in most_common_combs][::-1]
+    counts = [x[1] for x in most_common_combs][::-1]
+    df = pd.DataFrame(list(zip(labels, counts)), columns=["Combinations", "Counts"])
+    fig = px.bar(df, x="Counts", y="Combinations", orientation="h")
+    fig.update_layout(width=800, height=600)
+    st.plotly_chart(fig)
 
 if __name__ == "__main__":
     options = ("Image Gallery", "Image Stats")
